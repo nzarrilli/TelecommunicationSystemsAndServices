@@ -4,30 +4,47 @@ __author__ = 'nzarrilli'
 # Guida: http://www.afterhoursprogramming.com/tutorial/Python/Reading-Files/
 
 import os
+import re
+
+from Model.Host import Host
 
 
-def read_file(file_path):
+# Return the list of hosts
+def get_host(root_path):
     try:
+        filename = "Host.txt"
+
         # Open file
-        in_file = open(file_path, "r")
+        in_file = open(os.path.join(root_path, filename), "r")
+
+        host_list = []
 
         # Read all lines
         for line in in_file:
-            print line
+            mac_address = re.split("[= ]+", line)[2]
+            port = re.split("[= ]+", line)[4]
+            dpid = re.split("[= ]+", line)[6]
+
+            host_list.append(Host(mac_address, port, dpid))
 
         # Close file
         in_file.close()
+
+        return host_list
+
     except IOError, ex:
         print ex
 
+    return None
+
 
 if __name__ == "__main__":
-    # TODO: Modificare la path del file da leggere
     base_dir = os.getenv("HOME")
-    pycharm_dir = "PycharmProjects"
-    project_dir = "TelecommunicationSystemsAndServices"
-    file_dir = "File"
-    filename = "Host.txt"
-    # Creazione della path completa
-    file_path = os.path.join(base_dir, pycharm_dir, project_dir, file_dir, filename)
-    read_file(file_path)
+    ryu_dir = "ryu"
+    app_dir = "app"
+
+    # Creazione della path
+    root_path = os.path.join(base_dir, ryu_dir, ryu_dir, app_dir)
+
+    # Recupera la lista di host
+    host_list = get_host(root_path)

@@ -1,4 +1,0 @@
-Host<Mac address=00:00:00:00:00:03 port=3 dpid=3>
-Host<Mac address=00:00:00:00:00:02 port=3 dpid=4>
-Host<Mac address=00:00:00:00:00:01 port=1 dpid=1>
-Host<Mac address=00:00:00:00:00:04 port=4 dpid=4>
