@@ -2,51 +2,53 @@ __author__ = 'telcolab'
 import urllib2
 import json
 
-# dictionary = {}
-# dictionary['chiave'] = 'valore'
-# dictionary['chiave2'] = 'valore2'
-# subdictionary = {}
-# subdictionary['subchiave'] = 'subvalore'
-# subdictionary['subchiave2'] = 'subvalore2'
-# dictionary['chiaveComposta'] = subdictionary
-# list = []
-# listdictionary = {}
-# listdictionary['elemento1'] = "elemento11"
-# listdictionary['elemento2'] = "elemento12"
-# listdictionary2 = {}
-# listdictionary2['elemento1'] = "elemento21"
-# listdictionary2['elemento2'] = "elemento22"
-# list.append(listdictionary)
-# list.append(listdictionary2)
-# dictionary['chiaveList'] = list
-# json_data = json.dumps(dictionary, sort_keys=True, indent=4, separators=(',', ': '))
-#
-# data=json.loads(json_data)
-# print data['chiave']
-# print data['chiave2']
-# datiComposti= data['chiaveComposta']
-# print datiComposti['subchiave']
-# print datiComposti['subchiave2']
-# for item in data['chiaveList']:
-#     print item['elemento1']
-#     print item['elemento2']
+
 
 def install_rule(dpid, mac_sensore, multicast_ID, listOutputPorts):
     baseurl = 'localhost:8080'
+
+    # creazione e invio via POST della group entry
+    url_add_entry = '/stats/groupentry/add'
+    url = baseurl + url_add_entry
+    json_root = {}
+    json_root['dpid'] = dpid # TODO controllare se nel dpid vanno aggiunti gli 0 davanti
+    json_root['group_id'] = multicast_ID
+    buckets = []
+    bucketsDict = {}
+    actionsList = []
+    for port in listOutputPorts:
+        actionsDict = {}
+        actionsDict['type'] = "OUTPUT"
+        actionsDict['port'] = port
+        actionsList.append(actionsDict)
+    bucketsDict['actions'] = actionsList
+    buckets.append(bucketsDict)
+    json_root['buckets'] = buckets
+
+    json_data = json.dumps(json_root,sort_keys=False, indent=4, separators=(',', ': '))
+    print "GROUP ENTRY CREATA: \n" + json_data
+#  TODO  content = urllib2.urlopen(url=url, data=json_data).read()
+
+    # creazione e invio via POST della flow entry
     url_add_entry = '/stats/flowentry/add'
     url = baseurl + url_add_entry
     json_root = {}
     json_root['dpid'] = dpid
     match = {}
-         # TODO aggiungere il match
+    match['eth_src'] = mac_sensore
     json_root['match'] = match
     actions = []
     actionDictionary = {}
-        # TODO aggiungere le actions
+    actionDictionary['type'] = "GROUP"
+    actionDictionary['group_id'] = multicast_ID
     actions.append(actionDictionary)
     json_root['actions'] = actions
-    json_data = json.dumps(json_root, sort_keys=True, indent=4, separators=(',', ': '))
+    json_data = json.dumps(json_root,sort_keys=False, indent=4, separators=(',', ': '))
+    print "FLOW ENTRY CREATA: \n" + json_data
 
-    content = urllib2.urlopen(url=url, data=json_data).read()
+    #  TODO content = urllib2.urlopen(url=url, data=json_data).read()
 
-    # TODO fare la stessa cosa con la group table
+
+
+print "Esecuzione di 'install_rule(1, '20:40:8f:boh:prova:LOL', 2, [3,4])'"
+install_rule(1, '20:40:8f:boh:prova:LOL', 2, [3,4])
