@@ -7,3 +7,5 @@ class Switch(object):
     def __init__(self, dpid, ports):
         self.dpid = dpid
         self.ports = ports
+        self.linkDict = {}
+        self.primoHopDict = {}

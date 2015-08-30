@@ -2,7 +2,11 @@ __author__ = 'telcolab'
 import urllib2
 import json
 
-
+def getFlowStats(switchDpid):
+    baseurl = "localhost:8080"
+    url_get_flow_stats = '/stats/flow/' + switchDpid
+    url = baseurl + url_get_flow_stats
+    return urllib2.urlopen(url=url).read()
 
 def install_rule(dpid, mac_sensore, multicast_ID, listOutputPorts):
     baseurl = 'localhost:8080'
@@ -49,6 +53,8 @@ def install_rule(dpid, mac_sensore, multicast_ID, listOutputPorts):
     #  TODO content = urllib2.urlopen(url=url, data=json_data).read()
 
 
+# TESTS
 
-print "Esecuzione di 'install_rule(1, '20:40:8f:boh:prova:LOL', 2, [3,4])'"
-install_rule(1, '20:40:8f:boh:prova:LOL', 2, [3,4])
+# print "Esecuzione di 'install_rule(1, '20:40:8f:boh:prova:LOL', 2, [3,4])'"
+# install_rule(1, '20:40:8f:boh:prova:LOL', 2, [3,4])
+print getFlowStats(1)
