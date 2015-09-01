@@ -71,7 +71,7 @@ def __set_ports__(ports_dict, line):
         status = line[3]
 
         # Aggiorno al dizionario le porte
-        ports_dict[dpid] = Port(port_no, status)
+        ports_dict[port_no] = Port(port_no, status)
 
         # Controllo se ci sono altre porte da settare
         if len(line) > 4:
@@ -93,8 +93,10 @@ def get_hosts(network):
         port = re.split("[= ]+", line)[4]
         dpid = re.split("[= >]+", line)[6]
 
-        # Associo la porta
-        network[dpid].ports[mac_address] = Port(port, None, Host(mac_address))
+        # Cambio la chiave del dizionario della vecchia porta e poi elimino quella vecchia
+        network[dpid].ports[mac_address] = network[dpid].ports.pop(dpid)
+        # Aggiungo l'host alla lista delle porte
+        network[dpid].ports[mac_address].add_host(Host(mac_address))
 
     # Close file
     __close_file__(in_file)
@@ -102,10 +104,20 @@ def get_hosts(network):
     return network
 
 
-def addLinks(networkModel):
+def add_links(network):
     filename = "Link.txt"
-    # TODO leggere Link.txt e impostare per ogni switch della rete il dizionario linksDict (chiave: dpidDest, valore: oggetto Link)
-    return networkModel
+
+    # Open file
+    in_file = __open_file__(filename)
+
+    # Read all lines
+    for line in in_file:
+        print re.split("[<>,= ]+", line)
+
+    # Close file
+    __close_file__(in_file)
+
+    return network
 
 
 def addPaths(networkModel):
@@ -164,26 +176,38 @@ if __name__ == "__main__":
     # 1 Ottengo il dizionario degli switches
     network = get_switches()
 
-    # 1.2 Ottengo il dizionario degli host
+    # 2 Associo gli host ai vari switches
     network = get_hosts(network)
 
-    # Creazione del NetworkModel
-    # network_model = NetworkModel(switches)
+    # 3 Aggiorno il dizionario della rete aggiornando il collegamento tra i vari switches
+    # network = add_links(network)
+    #
+    for key in network:
+        print "Dpid:", key
+        for key_port in network[key].ports:
+            print "Key port:", key_port
+            print "Port number:", network[key].ports[key_port].port_no
+            print "Status:", network[key].ports[key_port].status
+            if network[key].ports[key_port].host is not None:
+                print "MAC address host:", network[key].ports[key_port].host.mac_address
+            print "\n"
+        print "----------------------------------------------------------------------"
 
-    # 1.2 Ottengo il dizionario degli switches
-    # networkModel.switches = get_switches()
+        # Creazione del NetworkModel
+        # network_model = NetworkModel(switches)
 
-    # 1.3 Aggiorno il dizionario degli switches impostando per ognuno la property "linksDict"
-    # networkModel = addLinks(networkModel)
 
-    # 1.4 Ottengo il dizionario dei sensori
-    # networkModel.sensori = get_sorgenti()
+        # 1.3 Aggiorno il dizionario degli switches impostando per ognuno la property "linksDict"
+        # networkModel = addLinks(networkModel)
 
-    # 1.5 Aggiorno il dizionario degli switches impostando per ognuno la property "primoHopDict"
-    # networkModel = addPaths(networkModel)
+        # 1.4 Ottengo il dizionario dei sensori
+        # networkModel.sensori = get_sorgenti()
 
-    # 2 Algoritmo installazione regole ryu
-    # for sensore in networkModel.sensori:
-    #    host = Host[sensore.mac_address]
-    #    primoSwitch = networkModel.switches[host.dpid]
-    #    installaRegoleRyu(primoSwitch, sensore, networkModel)
+        # 1.5 Aggiorno il dizionario degli switches impostando per ognuno la property "primoHopDict"
+        # networkModel = addPaths(networkModel)
+
+        # 2 Algoritmo installazione regole ryu
+        # for sensore in networkModel.sensori:
+        #    host = Host[sensore.mac_address]
+        #    primoSwitch = networkModel.switches[host.dpid]
+        #    installaRegoleRyu(primoSwitch, sensore, networkModel)
