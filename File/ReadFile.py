@@ -1,4 +1,4 @@
-__author__ = 'nzarrilli'
+__author__ = 'telcolab'
 
 import os
 import re
@@ -7,8 +7,9 @@ from Model.Host import Host
 from Model.Switch import Switch
 from Model.Port import Port
 from Model.NetworkModel import NetworkModel
-from Model.Sensore import Sensore
+from Model.Sorgente import Sorgente
 from Network import RyuRuleCreator
+
 
 def __open_file__(filename):
     try:
@@ -36,6 +37,50 @@ def __close_file__(in_file):
     return None
 
 
+# Return the list of switches
+def get_switches():
+    filename = "Switch.txt"
+
+    # Open file
+    in_file = __open_file__(filename)
+
+    switches_dict = {}
+
+    # Read all lines
+    for line in in_file:
+        content = re.split("[<> ,]+", line)
+
+        # Recupero le informazioni
+        dpid_switch = content[1].split("=")[1]
+        ports = __set_ports__({}, content[2:len(content) - 1])
+
+        switches_dict[dpid_switch] = Switch(dpid_switch, ports)
+
+    # Close file
+    __close_file__(in_file)
+
+    return switches_dict
+
+
+# Retrieving information about the switch ports
+def __set_ports__(ports_dict, line):
+    if "Port" in line[0]:
+
+        # Recupero le informazioni
+        dpid = line[1].split("=")[1]
+        port_no = line[2].split("=")[1]
+        status = line[3]
+
+        # Aggiorno al dizionario le porte
+        ports_dict[dpid] = Port(port_no, status)
+
+        # Controllo se ci sono altre porte da settare
+        if len(line) > 4:
+           __set_ports__(ports_dict, line[4: len(line)])
+
+    return ports_dict
+
+
 # Return the list of hosts
 def get_hosts():
     filename = "Host.txt"
@@ -59,41 +104,19 @@ def get_hosts():
     return hosts_dict
 
 
-# Return the list of switches
-def get_switches():
-    filename = "Switch.txt"
-
-    # Open file
-    in_file = __open_file__(filename)
-
-    switches_dict = []
-
-    # Read all lines
-    for line in in_file:
-        content = re.split("[<> ,]+", line)
-
-        # Recupero le informazioni
-        dpid_switch = content[1].split("=")[1]
-        ports = __set_ports__([], content[2:len(content) - 1])
-
-        switches_dict[dpid_switch]= (Switch(dpid_switch, ports))
-
-    # Close file
-    __close_file__(in_file)
-
-    return switches_dict
-
 def addLinks(networkModel):
     filename = "Link.txt"
     # TODO leggere Link.txt e impostare per ogni switch della rete il dizionario linksDict (chiave: dpidDest, valore: oggetto Link)
     return networkModel
+
 
 def addPaths(networkModel):
     filename = "Path.txt"
     # TODO leggere Path.txt e impostare per ogni switch della rete il dizionario primoHopDict (chiave: dpidDest, valore: dpid switch successivo)
     return networkModel
 
-def get_sensori():
+
+def get_sorgenti():
     filename = "Sorgenti.txt"
 
     # Open file
@@ -107,35 +130,16 @@ def get_sensori():
         multicastID = re.split("[:]+", line)[2]
         mac_address_dest = re.split("[:]+", line)[3]
         if not sensori_dict.keys().__contains__(mac_address_sorg):
-            sensori_dict[mac_address_sorg] = (Sensore(mac_address_sorg,multicastID))
+            sensori_dict[mac_address_sorg] = (Sorgente(mac_address_sorg, multicastID))
         else:
             tmpSensore = sensori_dict[mac_address_sorg]
             tmpSensore.addApplicationClient(mac_address_dest)
-            sensori_dict[mac_address_sorg] = tmpSensore # TODO se è come java quest'istruzione non serve
+            sensori_dict[mac_address_sorg] = tmpSensore  # TODO se e' come java quest'istruzione non serve
 
     # Close file
     __close_file__(in_file)
 
     return sensori_dict
-
-
-# Retrieving information about the switch ports
-def __set_ports__(ports_list, line):
-    if "Port" in line[0]:
-
-        # Recupero le informazioni
-        dpid = line[1].split("=")[1]
-        port_no = line[2].split("=")[1]
-        status = line[3]
-
-        # Aggiorno la lista delle porte
-        ports_list.append(Port(dpid, port_no, status))
-
-        # Controllo se ci sono altre porte da settare
-        if len(line) > 4:
-            __set_ports__(ports_list, line[4: len(line)])
-
-    return ports_list
 
 
 def installaRegoleRyu(primoSwitch, sensore, networkModel):
@@ -144,39 +148,48 @@ def installaRegoleRyu(primoSwitch, sensore, networkModel):
         hostDest = networkModel.hosts[mac_destinazione]
         switchDest = networkModel.switches[hostDest.dpid]
         nextSwitchDpid = primoSwitch.primoHopDict[switchDest.dpid]
-        installaRegoleRyu(networkModel.switches[nextSwitchDpid], sensore, networkModel) # ricorsione
-        if nextSwitchDpid != switchDest.dpid: # se non siamo ancora arrivati all'ultimo switch
+        installaRegoleRyu(networkModel.switches[nextSwitchDpid], sensore, networkModel)  # ricorsione
+        if nextSwitchDpid != switchDest.dpid:  # se non siamo ancora arrivati all'ultimo switch
             link = primoSwitch.linksDict[nextSwitchDpid]
-            if not destPortSet.__contains__(link.portDest):
-                destPortSet.append(link.portDest)
-            if destPortSet.__sizeof__()>0:
-                RyuRuleCreator.install_rule(primoSwitch.dpid, sensore.mac_address, sensore.gruppoMulticast, destPortSet )
-        else: # se siamo arrivati all'ultimo switch dobbiamo inoltrare il pacchetto sulla porta dell'host
+            if not destPortSet.__contains__(link.portSorg):
+                destPortSet.append(link.portSorg)
+            if destPortSet.__sizeof__() > 0:
+                RyuRuleCreator.install_rule(primoSwitch.dpid, sensore.mac_address, sensore.gruppoMulticast, destPortSet)
+        else:  # se siamo arrivati all'ultimo switch dobbiamo inoltrare il pacchetto sulla porta dell'host
             if not destPortSet.__contains__(hostDest.port):
                 destPortSet.append(hostDest.port)
-                RyuRuleCreator.install_rule(primoSwitch.dpid, sensore.mac_address, sensore.gruppoMulticast, destPortSet )
+                RyuRuleCreator.install_rule(primoSwitch.dpid, sensore.mac_address, sensore.gruppoMulticast, destPortSet)
+
+
 if __name__ == "__main__":
     # 1 Creazione NetworkModel
+    #network_model = NetworkModel()
 
-    networkModel = NetworkModel()
+    # 1 Ottengo il dizionario degli switches
+    switches = get_switches()
+
+    # Creazione del NetworkModel
+    network_model = NetworkModel(switches)
+    print network_model.switches
+
+
     # 1.1 Ottengo il dizionario degli host
-    networkModel.hosts = get_hosts()
+    #networkModel.hosts = get_hosts()
 
     # 1.2 Ottengo il dizionario degli switches
-    networkModel.switches = get_switches()
+    #networkModel.switches = get_switches()
 
     # 1.3 Aggiorno il dizionario degli switches impostando per ognuno la property "linksDict"
-    networkModel = addLinks(networkModel)
+    #networkModel = addLinks(networkModel)
 
     # 1.4 Ottengo il dizionario dei sensori
-    networkModel.sensori = get_sensori()
+    #networkModel.sensori = get_sorgenti()
 
     # 1.5 Aggiorno il dizionario degli switches impostando per ognuno la property "primoHopDict"
-    networkModel = addPaths(networkModel)
+    #networkModel = addPaths(networkModel)
 
     # 2 Algoritmo installazione regole ryu
-    for sensore in networkModel.sensori:
-        host = Host[sensore.mac_address]
-        primoSwitch = networkModel.switches[host.dpid]
-        installaRegoleRyu(primoSwitch, sensore, networkModel)
-
+    #for sensore in networkModel.sensori:
+    #    host = Host[sensore.mac_address]
+    #    primoSwitch = networkModel.switches[host.dpid]
+    #    installaRegoleRyu(primoSwitch, sensore, networkModel)

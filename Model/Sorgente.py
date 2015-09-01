@@ -1,6 +1,6 @@
 __author__ = 'telcolab'
 
-class Sensore(object):
+class Sorgente(object):
 
     # The class "constructor" - It's actually an initializer
     def __init__(self, mac_address, gruppoMulticast):
