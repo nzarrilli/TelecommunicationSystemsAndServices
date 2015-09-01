@@ -36,7 +36,7 @@ def __close_file__(in_file):
     return None
 
 
-# Return the list of switches
+# Return the dictionary of switches
 def get_switches():
     filename = "Switch.txt"
 
@@ -66,7 +66,7 @@ def __set_ports__(ports_dict, line):
     if "Port" in line[0]:
 
         # Recupero le informazioni
-        dpid = line[1].split("=")[1]
+        # dpid = line[1].split("=")[1]
         port_no = line[2].split("=")[1]
         status = line[3]
 
@@ -94,25 +94,39 @@ def get_hosts(network):
         dpid = re.split("[= >]+", line)[6]
 
         # Cambio la chiave del dizionario della vecchia porta e poi elimino quella vecchia
-        network[dpid].ports[mac_address] = network[dpid].ports.pop(dpid)
+        network[dpid].ports[mac_address] = network[dpid].ports.pop(port)
         # Aggiungo l'host alla lista delle porte
-        network[dpid].ports[mac_address].add_host(Host(mac_address))
+        network[dpid].ports[mac_address].set_host(Host(mac_address))
 
     # Close file
     __close_file__(in_file)
 
     return network
 
-
+# Aggiungo alla rete i collegamenti tra i vari switch
 def add_links(network):
     filename = "Link.txt"
 
     # Open file
     in_file = __open_file__(filename)
 
+    suffix_dpid = "dpid="
+
     # Read all lines
     for line in in_file:
-        print re.split("[<>,= ]+", line)
+        dpid_source = re.split("[<>,= ]+", line)[2]
+        port_source = re.split("[<>,= ]+", line)[4]
+        status_source = re.split("[<>,= ]+", line)[5]
+        dpid_destination = re.split("[<>,= ]+", line)[8]
+
+        # Aggiungo il dpid dello switch di destinazione
+        network[dpid_source].ports[suffix_dpid + dpid_destination] = network[dpid_source].ports.pop(port_source)
+        # Aggiorno la porta
+        network[dpid_source].ports[suffix_dpid + dpid_destination].set_port = port_source
+        # Aggiorno lo stato della porta
+        network[dpid_source].ports[suffix_dpid + dpid_destination].set_status = status_source
+        # Aggiungo lo switch di destinazione
+        network[dpid_source].ports[suffix_dpid + dpid_destination].set_switch(network[dpid_destination])
 
     # Close file
     __close_file__(in_file)
@@ -180,18 +194,21 @@ if __name__ == "__main__":
     network = get_hosts(network)
 
     # 3 Aggiorno il dizionario della rete aggiornando il collegamento tra i vari switches
-    # network = add_links(network)
-    #
+    network = add_links(network)
+
     for key in network:
-        print "Dpid:", key
         for key_port in network[key].ports:
+            print "Dpid switch:", key
             print "Key port:", key_port
             print "Port number:", network[key].ports[key_port].port_no
             print "Status:", network[key].ports[key_port].status
             if network[key].ports[key_port].host is not None:
                 print "MAC address host:", network[key].ports[key_port].host.mac_address
-            print "\n"
-        print "----------------------------------------------------------------------"
+            if network[key].ports[key_port].switch is not None:
+                print "Dpid destination switch:", network[key].ports[key_port].switch.dpid
+            print "----------------------------------------------------------------------"
+
+
 
         # Creazione del NetworkModel
         # network_model = NetworkModel(switches)
