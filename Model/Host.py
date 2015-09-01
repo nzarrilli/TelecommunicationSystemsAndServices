@@ -1,10 +1,8 @@
-__author__ = 'nzarrilli'
+__author__ = 'telcolab'
 
 
 class Host(object):
 
     # The class "constructor" - It's actually an initializer
-    def __init__(self, mac_address, port, dpid):
+    def __init__(self, mac_address):
         self.mac_address = mac_address
-        self.port = port
-        self.dpid = dpid

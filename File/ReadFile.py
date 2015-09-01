@@ -6,7 +6,6 @@ import re
 from Model.Host import Host
 from Model.Switch import Switch
 from Model.Port import Port
-from Model.NetworkModel import NetworkModel
 from Model.Sorgente import Sorgente
 from Network import RyuRuleCreator
 
@@ -76,32 +75,31 @@ def __set_ports__(ports_dict, line):
 
         # Controllo se ci sono altre porte da settare
         if len(line) > 4:
-           __set_ports__(ports_dict, line[4: len(line)])
+            __set_ports__(ports_dict, line[4: len(line)])
 
     return ports_dict
 
 
 # Return the list of hosts
-def get_hosts():
+def get_hosts(network):
     filename = "Host.txt"
 
     # Open file
     in_file = __open_file__(filename)
 
-    hosts_dict = {}
-
     # Read all lines
     for line in in_file:
         mac_address = re.split("[= ]+", line)[2]
         port = re.split("[= ]+", line)[4]
-        dpid = re.split("[= ]+", line)[6]
+        dpid = re.split("[= >]+", line)[6]
 
-        hosts_dict[mac_address] = (Host(mac_address, port, dpid))
+        # Associo la porta
+        network[dpid].ports[mac_address] = Port(port, None, Host(mac_address))
 
     # Close file
     __close_file__(in_file)
 
-    return hosts_dict
+    return network
 
 
 def addLinks(networkModel):
@@ -162,34 +160,30 @@ def installaRegoleRyu(primoSwitch, sensore, networkModel):
 
 
 if __name__ == "__main__":
-    # 1 Creazione NetworkModel
-    #network_model = NetworkModel()
 
     # 1 Ottengo il dizionario degli switches
-    switches = get_switches()
+    network = get_switches()
+
+    # 1.2 Ottengo il dizionario degli host
+    network = get_hosts(network)
 
     # Creazione del NetworkModel
-    network_model = NetworkModel(switches)
-    print network_model.switches
-
-
-    # 1.1 Ottengo il dizionario degli host
-    #networkModel.hosts = get_hosts()
+    # network_model = NetworkModel(switches)
 
     # 1.2 Ottengo il dizionario degli switches
-    #networkModel.switches = get_switches()
+    # networkModel.switches = get_switches()
 
     # 1.3 Aggiorno il dizionario degli switches impostando per ognuno la property "linksDict"
-    #networkModel = addLinks(networkModel)
+    # networkModel = addLinks(networkModel)
 
     # 1.4 Ottengo il dizionario dei sensori
-    #networkModel.sensori = get_sorgenti()
+    # networkModel.sensori = get_sorgenti()
 
     # 1.5 Aggiorno il dizionario degli switches impostando per ognuno la property "primoHopDict"
-    #networkModel = addPaths(networkModel)
+    # networkModel = addPaths(networkModel)
 
     # 2 Algoritmo installazione regole ryu
-    #for sensore in networkModel.sensori:
+    # for sensore in networkModel.sensori:
     #    host = Host[sensore.mac_address]
     #    primoSwitch = networkModel.switches[host.dpid]
     #    installaRegoleRyu(primoSwitch, sensore, networkModel)
