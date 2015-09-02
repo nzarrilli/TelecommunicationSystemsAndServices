@@ -103,6 +103,7 @@ def get_hosts(network):
 
     return network
 
+
 # Aggiungo alla rete i collegamenti tra i vari switch
 def add_links(network):
     filename = "Link.txt"
@@ -134,10 +135,46 @@ def add_links(network):
     return network
 
 
-def addPaths(networkModel):
+# Aggiungo alla rete i percorsi tra i vari switch
+def add_paths(network):
     filename = "Path.txt"
-    # TODO leggere Path.txt e impostare per ogni switch della rete il dizionario primoHopDict (chiave: dpidDest, valore: dpid switch successivo)
-    return networkModel
+
+    # Open file
+    in_file = __open_file__(filename)
+
+    # Read all lines
+    for line in in_file:
+        new_line = re.split("[\{\}]+", line)
+        source = new_line[1].replace(": ", "")
+
+        destination_dict = __get_destination__({}, new_line[2].replace("],", "]").replace(", ", ",").replace(": ", " ").split(" "))
+
+        network[source].set_paths(destination_dict)
+
+    # Close file
+    __close_file__(in_file)
+
+    return network
+
+
+# Recupero i nodi
+def __get_destination__(destination_dict, line):
+
+    if len(line) >= 2:
+        destination = line[0]
+        nodes = re.split("[\[\],]+", line[1])
+
+        nodes_list = []
+
+        # Creo la lista dei nodi
+        for i in range(1, len(nodes)-1):
+            nodes_list.append(nodes[i])
+
+        destination_dict[destination] = nodes_list
+
+        __get_destination__(destination_dict, line[2:len(line)])
+
+    return destination_dict
 
 
 def get_sorgenti():
@@ -196,9 +233,16 @@ if __name__ == "__main__":
     # 3 Aggiorno il dizionario della rete aggiornando il collegamento tra i vari switches
     network = add_links(network)
 
+    # 4 Aggiorno il dizionario degli switches impostando per ognuno la property "primoHopDict"
+    networkModel = add_paths(network)
+
+    # Stampo a video il risultato
     for key in network:
+        print "Dpid switch:", key
+        if network[key].path is not None:
+            print "Paths:", network[key].path
         for key_port in network[key].ports:
-            print "Dpid switch:", key
+            print ""
             print "Key port:", key_port
             print "Port number:", network[key].ports[key_port].port_no
             print "Status:", network[key].ports[key_port].status
@@ -206,22 +250,13 @@ if __name__ == "__main__":
                 print "MAC address host:", network[key].ports[key_port].host.mac_address
             if network[key].ports[key_port].switch is not None:
                 print "Dpid destination switch:", network[key].ports[key_port].switch.dpid
-            print "----------------------------------------------------------------------"
 
-
-
-        # Creazione del NetworkModel
-        # network_model = NetworkModel(switches)
-
-
-        # 1.3 Aggiorno il dizionario degli switches impostando per ognuno la property "linksDict"
-        # networkModel = addLinks(networkModel)
+        print "----------------------------------------------------------------------"
 
         # 1.4 Ottengo il dizionario dei sensori
         # networkModel.sensori = get_sorgenti()
 
-        # 1.5 Aggiorno il dizionario degli switches impostando per ognuno la property "primoHopDict"
-        # networkModel = addPaths(networkModel)
+
 
         # 2 Algoritmo installazione regole ryu
         # for sensore in networkModel.sensori:
