@@ -1,3 +1,5 @@
+from Model.NetworkModel import NetworkModel
+
 __author__ = 'telcolab'
 
 import os
@@ -6,7 +8,7 @@ import re
 from Model.Host import Host
 from Model.Switch import Switch
 from Model.Port import Port
-from Model.Sorgente import Sorgente
+from Model.Source import Source
 from Network import RyuRuleCreator
 
 
@@ -147,7 +149,9 @@ def add_paths(network):
         new_line = re.split("[\{\}]+", line)
         source = new_line[1].replace(": ", "")
 
-        destination_dict = __get_destination__({}, new_line[2].replace("],", "]").replace(", ", ",").replace(": ", " ").split(" "))
+        destination_dict = __get_destination__({}, new_line[2].replace("],", "]").replace(", ", ",").replace(": ",
+                                                                                                             " ").split(
+            " "))
 
         network[source].set_paths(destination_dict)
 
@@ -159,7 +163,6 @@ def add_paths(network):
 
 # Recupero i nodi
 def __get_destination__(destination_dict, line):
-
     if len(line) >= 2:
         destination = line[0]
         nodes = re.split("[\[\],]+", line[1])
@@ -167,7 +170,7 @@ def __get_destination__(destination_dict, line):
         nodes_list = []
 
         # Creo la lista dei nodi
-        for i in range(1, len(nodes)-1):
+        for i in range(1, len(nodes) - 1):
             nodes_list.append(nodes[i])
 
         destination_dict[destination] = nodes_list
@@ -183,24 +186,28 @@ def get_sorgenti():
     # Open file
     in_file = __open_file__(filename)
 
-    sensori_dict = {}
+    sources_dict = {}
 
     # Read all lines
     for line in in_file:
-        mac_address_sorg = re.split("[:]+", line)[1]
-        multicastID = re.split("[:]+", line)[2]
-        mac_address_dest = re.split("[:]+", line)[3]
-        if not sensori_dict.keys().__contains__(mac_address_sorg):
-            sensori_dict[mac_address_sorg] = (Sorgente(mac_address_sorg, multicastID))
+        new_line = re.split("[\n:]+", line)
+
+        mac_address_sorg = ':'.join(new_line[0:6])
+        multicast_id = new_line[6]
+        mac_address_dest = ':'.join(new_line[7:13])
+
+        if not sources_dict.keys().__contains__(mac_address_sorg):
+            sources_dict[mac_address_sorg] = Source(mac_address_sorg, multicast_id)
+            sources_dict[mac_address_sorg].add_application_client(mac_address_dest)
         else:
-            tmpSensore = sensori_dict[mac_address_sorg]
-            tmpSensore.addApplicationClient(mac_address_dest)
-            sensori_dict[mac_address_sorg] = tmpSensore  # TODO se e' come java quest'istruzione non serve
+            temp_source = sources_dict[mac_address_sorg]
+            temp_source.add_application_client(mac_address_dest)
+            sources_dict[mac_address_sorg] = temp_source
 
     # Close file
     __close_file__(in_file)
 
-    return sensori_dict
+    return sources_dict
 
 
 def installaRegoleRyu(primoSwitch, sensore, networkModel):
@@ -253,13 +260,22 @@ if __name__ == "__main__":
 
         print "----------------------------------------------------------------------"
 
-        # 1.4 Ottengo il dizionario dei sensori
-        # networkModel.sensori = get_sorgenti()
+    # 5 Ottengo il dizionario dei sorgenti
+    sources = get_sorgenti()
+
+    for key in sources:
+        print "Source:", sources[key].mac_address
+        print "Multicat id:", sources[key].multicast_id
+        print "Destination list:", sources[key].mac_destination_list
+        print "----------------------------------------------------------------------"
+
+    # 6 Creo il nuovo modello della rete
+    networkModel = NetworkModel(network, sources)
 
 
 
-        # 2 Algoritmo installazione regole ryu
-        # for sensore in networkModel.sensori:
-        #    host = Host[sensore.mac_address]
-        #    primoSwitch = networkModel.switches[host.dpid]
-        #    installaRegoleRyu(primoSwitch, sensore, networkModel)
+    # 2 Algoritmo installazione regole ryu
+    # for sensore in networkModel.sensori:
+    #    host = Host[sensore.mac_address]
+    #    primoSwitch = networkModel.switches[host.dpid]
+    #    installaRegoleRyu(primoSwitch, sensore, networkModel)
