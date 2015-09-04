@@ -11,5 +11,3 @@ class Source(object):
 
     def add_application_client(self, mac_address):
         self.mac_destination_list.append(mac_address)
-
-

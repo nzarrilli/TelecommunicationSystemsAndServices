@@ -11,3 +11,8 @@ class Switch(object):
 
     def set_paths(self, path):
         self.path = path
+
+    def get_switch_port(self, dpid_dest):
+        suffix_dpid = "dpid="
+
+        return self.ports[suffix_dpid + dpid_dest].port_no

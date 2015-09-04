@@ -1,5 +1,3 @@
-from Model.NetworkModel import NetworkModel
-
 __author__ = 'telcolab'
 
 import os
@@ -9,6 +7,7 @@ from Model.Host import Host
 from Model.Switch import Switch
 from Model.Port import Port
 from Model.Source import Source
+from Model.NetworkModel import NetworkModel
 from Network import RyuRuleCreator
 
 
@@ -180,7 +179,8 @@ def __get_destination__(destination_dict, line):
     return destination_dict
 
 
-def get_sorgenti():
+# Recupero i sorgenti e le destinazioni
+def get_sources():
     filename = "Sorgenti.txt"
 
     # Open file
@@ -210,23 +210,64 @@ def get_sorgenti():
     return sources_dict
 
 
-def installaRegoleRyu(primoSwitch, sensore, networkModel):
-    destPortSet = []
-    for mac_destinazione in sensore.listaMacDest:
-        hostDest = networkModel.hosts[mac_destinazione]
-        switchDest = networkModel.switches[hostDest.dpid]
-        nextSwitchDpid = primoSwitch.primoHopDict[switchDest.dpid]
-        installaRegoleRyu(networkModel.switches[nextSwitchDpid], sensore, networkModel)  # ricorsione
-        if nextSwitchDpid != switchDest.dpid:  # se non siamo ancora arrivati all'ultimo switch
-            link = primoSwitch.linksDict[nextSwitchDpid]
-            if not destPortSet.__contains__(link.portSorg):
-                destPortSet.append(link.portSorg)
-            if destPortSet.__sizeof__() > 0:
-                RyuRuleCreator.install_rule(primoSwitch.dpid, sensore.mac_address, sensore.gruppoMulticast, destPortSet)
-        else:  # se siamo arrivati all'ultimo switch dobbiamo inoltrare il pacchetto sulla porta dell'host
-            if not destPortSet.__contains__(hostDest.port):
-                destPortSet.append(hostDest.port)
-                RyuRuleCreator.install_rule(primoSwitch.dpid, sensore.mac_address, sensore.gruppoMulticast, destPortSet)
+# Restituisce lo switch
+def __get_switch__(network, mac_address_source):
+    global first_switch
+
+    for key in network:
+        if network[key].ports.keys().__contains__(mac_address_source):
+            first_switch = network[key]
+            break
+
+    return first_switch
+
+
+#                D
+#               /
+# So - S - S - S - S - D
+#            \
+#              S - D
+
+
+# Funzione che installa le regole di Ryu
+def install_rules_ryu(current_switch, source, network_model):
+    # dest_port_set = []
+    dest_port_info_dict = {}
+
+    for destination_mac in source.mac_destination_list:
+        dest_port = 0
+        # Recupero switch di destinazione
+        switch_dest = __get_switch__(network_model.network, destination_mac)
+
+        # Se non siamo ancora arrivati all'ultimo switch
+        if current_switch.dpid != switch_dest.dpid:
+
+            # Recupero dpid dello switch successivo
+            next_switch_dpid = current_switch.path[switch_dest.dpid][1]
+
+            dest_port = current_switch.get_switch_port(next_switch_dpid)
+        else:  # Se siamo arrivati all'ultimo switch dobbiamo inoltrare il pacchetto sulla porta dell'host
+            for key in switch_dest.ports:
+                if switch_dest.ports[key].host is not None and switch_dest.ports[
+                    key].host.mac_address == destination_mac:
+                    dest_port = switch_dest.ports[key].port_no
+                    break
+
+        if not dest_port_info_dict.keys().__contains__(dest_port):
+            dest_port_info_dict[dest_port] = []
+            dest_port_info_dict[dest_port].append(switch_dest)
+            dest_port_info_dict[dest_port].append([])
+        dest_port_info_dict[dest_port][1].append(destination_mac)
+
+    RyuRuleCreator.install_rule(current_switch.dpid, source.mac_address, source.multicast_id,
+                                dest_port_info_dict.keys())
+    for dp in dest_port_info_dict.values():
+        tmpSource = Source(source.mac_address, source.multicast_id)
+        for app_client in dp[1]:
+            tmpSource.add_application_client(app_client)
+        if (current_switch.dpid != dp[0].dpid):
+            print "RICORSIONE da " + current_switch.dpid + " a " + dp[0].dpid
+            install_rules_ryu(dp[0], tmpSource, network_model)
 
 
 if __name__ == "__main__":
@@ -241,7 +282,7 @@ if __name__ == "__main__":
     network = add_links(network)
 
     # 4 Aggiorno il dizionario degli switches impostando per ognuno la property "primoHopDict"
-    networkModel = add_paths(network)
+    network_model = add_paths(network)
 
     # Stampo a video il risultato
     for key in network:
@@ -261,21 +302,19 @@ if __name__ == "__main__":
         print "----------------------------------------------------------------------"
 
     # 5 Ottengo il dizionario dei sorgenti
-    sources = get_sorgenti()
+    sources = get_sources()
 
     for key in sources:
         print "Source:", sources[key].mac_address
-        print "Multicat id:", sources[key].multicast_id
+        print "Multicast id:", sources[key].multicast_id
         print "Destination list:", sources[key].mac_destination_list
         print "----------------------------------------------------------------------"
 
     # 6 Creo il nuovo modello della rete
-    networkModel = NetworkModel(network, sources)
+    network_model = NetworkModel(network, sources)
 
-
-
-    # 2 Algoritmo installazione regole ryu
-    # for sensore in networkModel.sensori:
-    #    host = Host[sensore.mac_address]
-    #    primoSwitch = networkModel.switches[host.dpid]
-    #    installaRegoleRyu(primoSwitch, sensore, networkModel)
+    # 7 Algoritmo installazione regole ryu
+    for source in network_model.sources:
+        switch = __get_switch__(network_model.network, source)
+        print "Inzio ricorsione switch " + switch.dpid
+        install_rules_ryu(switch, network_model.sources[source], network_model)
