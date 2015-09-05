@@ -15,4 +15,4 @@ class Switch(object):
     def get_switch_port(self, dpid_dest):
         suffix_dpid = "dpid="
 
-        return self.ports[suffix_dpid + dpid_dest].port_no
+        return self.ports[suffix_dpid + dpid_dest].get_port()

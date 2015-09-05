@@ -222,52 +222,52 @@ def __get_switch__(network, mac_address_source):
     return first_switch
 
 
-#                D
-#               /
-# So - S - S - S - S - D
-#            \
-#              S - D
+# Funzione che aggiunge al dizionario la porta di collegamento tra lo switch sorgente e quello di destinazione
+def __add_destination_port__(destination_port_dict, dpid_switch, port_no):
+    if not destination_port_dict.keys().__contains__(dpid_switch):
+        destination_port_dict[dpid_switch] = []
+        destination_port_dict[dpid_switch].append(port_no)
+    else:
+        destination_port_dict[dpid_switch].append(port_no)
+
+    return destination_port_dict
 
 
-# Funzione che installa le regole di Ryu
-def install_rules_ryu(current_switch, source, network_model):
-    # dest_port_set = []
-    dest_port_info_dict = {}
+def new(destination_mac_address, current_switch, network_model, destination_port_dict):
+    # Recupero le informazioni sullo switch al quale e' collegato l'host di destinazione
+    destination_switch = __get_switch__(network_model.network, destination_mac_address)
 
-    for destination_mac in source.mac_destination_list:
-        dest_port = 0
-        # Recupero switch di destinazione
-        switch_dest = __get_switch__(network_model.network, destination_mac)
+    # Controlliamo che lo switch corrente non e' lo stesso di quello di destinazione
+    if current_switch.dpid != destination_switch.dpid:
 
-        # Se non siamo ancora arrivati all'ultimo switch
-        if current_switch.dpid != switch_dest.dpid:
+        # Recupero dpid dello switch successivo dalla lista dei paths
+        next_switch_dpid = current_switch.path[destination_switch.dpid][1]
 
-            # Recupero dpid dello switch successivo
-            next_switch_dpid = current_switch.path[switch_dest.dpid][1]
+        # Recupero la porta di collegamento dello switch successivo
+        destination_port = current_switch.get_switch_port(next_switch_dpid)
 
-            dest_port = current_switch.get_switch_port(next_switch_dpid)
-        else:  # Se siamo arrivati all'ultimo switch dobbiamo inoltrare il pacchetto sulla porta dell'host
-            for key in switch_dest.ports:
-                if switch_dest.ports[key].host is not None and switch_dest.ports[
-                    key].host.mac_address == destination_mac:
-                    dest_port = switch_dest.ports[key].port_no
-                    break
+        # Aggiungo al dizionario la porta di collegamento tra lo switch corrente e lo switch successivo
+        destination_port_dict = __add_destination_port__(destination_port_dict, current_switch.dpid, destination_port)
 
-        if not dest_port_info_dict.keys().__contains__(dest_port):
-            dest_port_info_dict[dest_port] = []
-            dest_port_info_dict[dest_port].append(switch_dest)
-            dest_port_info_dict[dest_port].append([])
-        dest_port_info_dict[dest_port][1].append(destination_mac)
+        print "Switch", current_switch.dpid, "--> Port", destination_port, "--> Switch", next_switch_dpid
 
-    RyuRuleCreator.install_rule(current_switch.dpid, source.mac_address, source.multicast_id,
-                                dest_port_info_dict.keys())
-    for dp in dest_port_info_dict.values():
-        tmpSource = Source(source.mac_address, source.multicast_id)
-        for app_client in dp[1]:
-            tmpSource.add_application_client(app_client)
-        if (current_switch.dpid != dp[0].dpid):
-            print "RICORSIONE da " + current_switch.dpid + " a " + dp[0].dpid
-            install_rules_ryu(dp[0], tmpSource, network_model)
+        # Richiamo il metodo passandogli lo switch successivo
+        new(destination_mac_address, network[next_switch_dpid], network_model, destination_port_dict)
+
+    else:  # Se siamo arrivati all'ultimo switch dobbiamo inoltrare il pacchetto sulla porta dell'host
+        for key_port in destination_switch.ports:
+            if destination_switch.ports[key_port].host is not None \
+                    and destination_switch.ports[key_port].host.mac_address == destination_mac_address:
+                # Recupero la porta di collegamento tra l'host e lo switch
+                destination_port = destination_switch.ports[key_port].port_no
+                # Aggiungo al dizionario la porta di collegamento tra lo switch corrente e lo switch successivo
+                destination_port_dict = __add_destination_port__(destination_port_dict, current_switch.dpid,
+                                                                 destination_port)
+
+                print "Switch", current_switch.dpid, "--> Port", destination_port, "--> Host", destination_mac_address
+                break
+
+    return destination_port_dict
 
 
 if __name__ == "__main__":
@@ -316,5 +316,29 @@ if __name__ == "__main__":
     # 7 Algoritmo installazione regole ryu
     for source in network_model.sources:
         switch = __get_switch__(network_model.network, source)
-        print "Inzio ricorsione switch " + switch.dpid
-        install_rules_ryu(switch, network_model.sources[source], network_model)
+        print "#######################################################"
+        print "MAC address della sorgente:", source
+        print "La sorgente e' collegata alla switch:", switch.dpid
+        print "#######################################################"
+
+        # Creo il dizionario che contiene come chiave il DPID dello switch e come valore la lista di porte di
+        # destinazione
+        destination_port_dict = {}
+
+        # Controllo tutte le possibili destinazioni della sorgente
+        for destination_mac_address in network_model.sources[source].mac_destination_list:
+            # Stampo la lista dei MAC address delle destinazioni della sorgente
+            print "MAC address di destinazione:", destination_mac_address
+
+            # Richiamo la funzione che si occupa di verificare quali sono gli switch o gli host collegati per arrivare
+            # alla destinazione
+            destination_port_dict = new(destination_mac_address, switch, network_model, destination_port_dict)
+
+            print ""
+
+        for destination_key in destination_port_dict:
+            print "DPID:", destination_key
+            print "Lista di porte da configurare:", destination_port_dict[destination_key]
+            # TODO Aggiungere la chiamata per installare le regole
+            RyuRuleCreator.install_rule(destination_key, source, network_model.sources[source].multicast_id,
+                                        destination_port_dict[destination_key])

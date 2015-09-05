@@ -13,6 +13,9 @@ class Port(object):
     def set_port(self, port_no):
         self.port_no = port_no
 
+    def get_port(self):
+        return self.port_no
+
     def set_status(self, status):
         self.status = status
 
