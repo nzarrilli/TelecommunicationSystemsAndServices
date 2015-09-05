@@ -233,7 +233,7 @@ def __add_destination_port__(destination_port_dict, dpid_switch, port_no):
     return destination_port_dict
 
 
-def new(destination_mac_address, current_switch, network_model, destination_port_dict):
+def install_rules_ryu(destination_mac_address, current_switch, network_model, destination_port_dict):
     # Recupero le informazioni sullo switch al quale e' collegato l'host di destinazione
     destination_switch = __get_switch__(network_model.network, destination_mac_address)
 
@@ -252,7 +252,7 @@ def new(destination_mac_address, current_switch, network_model, destination_port
         print "Switch", current_switch.dpid, "--> Port", destination_port, "--> Switch", next_switch_dpid
 
         # Richiamo il metodo passandogli lo switch successivo
-        new(destination_mac_address, network[next_switch_dpid], network_model, destination_port_dict)
+        install_rules_ryu(destination_mac_address, network[next_switch_dpid], network_model, destination_port_dict)
 
     else:  # Se siamo arrivati all'ultimo switch dobbiamo inoltrare il pacchetto sulla porta dell'host
         for key_port in destination_switch.ports:
@@ -332,13 +332,12 @@ if __name__ == "__main__":
 
             # Richiamo la funzione che si occupa di verificare quali sono gli switch o gli host collegati per arrivare
             # alla destinazione
-            destination_port_dict = new(destination_mac_address, switch, network_model, destination_port_dict)
+            destination_port_dict = install_rules_ryu(destination_mac_address, switch, network_model, destination_port_dict)
 
             print ""
 
         for destination_key in destination_port_dict:
             print "DPID:", destination_key
             print "Lista di porte da configurare:", destination_port_dict[destination_key]
-            # TODO Aggiungere la chiamata per installare le regole
             RyuRuleCreator.install_rule(destination_key, source, network_model.sources[source].multicast_id,
                                         destination_port_dict[destination_key])
