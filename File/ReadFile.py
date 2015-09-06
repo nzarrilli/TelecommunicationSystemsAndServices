@@ -313,7 +313,12 @@ if __name__ == "__main__":
     # 6 Creo il nuovo modello della rete
     network_model = NetworkModel(network, sources)
 
-    # 7 Algoritmo installazione regole ryu
+    # 7 Clean switch rules
+    for key_dpid_switch in network_model.network:
+        RyuRuleCreator.clean_flow_stats(key_dpid_switch)
+        RyuRuleCreator.clean_group_stats(key_dpid_switch)
+
+    # 8 Algoritmo installazione regole ryu
     for source in network_model.sources:
         switch = __get_switch__(network_model.network, source)
         print "#######################################################"
