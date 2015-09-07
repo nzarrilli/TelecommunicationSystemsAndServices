@@ -316,8 +316,9 @@ if __name__ == "__main__":
 
     # 7 Clean switch rules
     for key_dpid_switch in network_model.network:
-        RyuRuleCreator.clean_flow_stats(key_dpid_switch)
+        # importante: CANCELLARE SEMPRE PRIMA I GROUP CHE I FLOWS
         RyuRuleCreator.clean_group_stats(key_dpid_switch)
+        RyuRuleCreator.clean_flow_stats(key_dpid_switch)
 
     # 8 Algoritmo installazione regole ryu
     for source in network_model.sources:
