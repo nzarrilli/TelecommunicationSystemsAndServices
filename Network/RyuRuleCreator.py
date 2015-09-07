@@ -1,7 +1,8 @@
-__author__ = "telcolab"
-
 import urllib2
 import json
+
+__author__ = "telcolab"
+
 
 base_url = "http://localhost:8080"
 
@@ -30,6 +31,8 @@ def clean_flow_stats(dpid_switch):
 
     urllib2.urlopen(url=url, data=json_data).read()
 
+    print "Cancellate tutte flow entries dello switch:", dpid_switch
+
 
 def clean_group_stats(dpid_switch):
     url_clean_switch = "/stats/groupentry/delete"
@@ -43,6 +46,8 @@ def clean_group_stats(dpid_switch):
         json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
 
         urllib2.urlopen(url=url, data=json_data).read()
+
+        print "Cancellata group entry con id", rule["group_id"], "dallo switch", dpid_switch
 
 
 def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
@@ -83,59 +88,3 @@ def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
     print "FLOW ENTRY CREATA: \n" + json_data
     # Invio via POST della flow entry
     urllib2.urlopen(url=url, data=json_data).read()
-
-# TESTS
-# print "Esecuzione di install_rule(1, '20:40:8f:boh:prova:LOL', 2, [3,4])"
-# install_rule(1, "20:40:8f:boh:prova:LOL", 2, [3, 4, 5, 6, 7])
-
-# json_response = get_flow_stats(1)
-# print json.dumps(json.loads(json_response), sort_keys=False, indent=4, separators=(",", ": "))
-
-# json_response = get_group_stats(1)
-# print json.dumps(json.loads(json_response), sort_keys=False, indent=4, separators=(",", ": "))
-# get_flow_stats(4)
-
-# RyuRuleCreator.get_flow_stats(6)
-# '{"6": [{"actions": ["GROUP:1"], "idle_timeout": 0, "cookie": 0, "packet_count": 0, "hard_timeout": 0, "byte_count": 0, "length": 80, "duration_nsec": 968000000, "priority": 0, "duration_sec": 246, "table_id": 0, "flags": 0, "match": {"dl_src": "00:00:00:00:00:01"}}]}'
-# >>> res = RyuRuleCreator.get_flow_stats(6)
-# >>> obj_res = json.loads(res)
-# Traceback (most recent call last):
-#   File "<input>", line 1, in <module>
-# NameError: name 'json' is not defined
-# >>> import json
-# >>> obj_res = json.loads(res)
-# >>> obj_res
-# {u'6': [{u'priority': 0, u'duration_sec': 268, u'hard_timeout': 0, u'byte_count': 0, u'length': 80, u'actions': [u'GROUP:1'], u'duration_nsec': 263000000, u'packet_count': 0, u'idle_timeout': 0, u'cookie': 0, u'flags': 0, u'table_id': 0, u'match': {u'dl_src': u'00:00:00:00:00:01'}}]}
-# >>> obj_res.keys()
-# [u'6']
-# >>> obj_res[6]
-# Traceback (most recent call last):
-#   File "<input>", line 1, in <module>
-# KeyError: 6
-# >>> obj_res["6"]
-# [{u'priority': 0, u'duration_sec': 268, u'hard_timeout': 0, u'byte_count': 0, u'length': 80, u'actions': [u'GROUP:1'], u'duration_nsec': 263000000, u'packet_count': 0, u'idle_timeout': 0, u'cookie': 0, u'flags': 0, u'table_id': 0, u'match': {u'dl_src': u'00:00:00:00:00:01'}}]
-# >>> obj_res_6 = obj_res["6"]
-# >>> obj_res_6[0].keys()
-# [u'priority', u'duration_sec', u'hard_timeout', u'byte_count', u'length', u'actions', u'duration_nsec', u'packet_count', u'idle_timeout', u'cookie', u'flags', u'table_id', u'match']
-# >>> obj_res_6[0]["actions"]
-# [u'GROUP:1']
-# >>> obj_res_6[0]["actions"][0]
-# u'GROUP:1'
-# >>> str(obj_res_6[0]["actions"][0])
-# 'GROUP:1'
-# >>> obj_res_6[0]["actions"][0].keys()
-# Traceback (most recent call last):
-#   File "<input>", line 1, in <module>
-# AttributeError: 'unicode' object has no attribute 'keys'
-# >>> obj_res_6[0]["actions"][0].values()
-# Traceback (most recent call last):
-#   File "<input>", line 1, in <module>
-# AttributeError: 'unicode' object has no attribute 'values'
-# >>> obj_res_6[0]["actions"][0][0]
-# u'G'
-# >>> str(obj_res_6[0]["actions"][0])
-# 'GROUP:1'
-# >>> import re
-# >>> re.split("[:]+", str(obj_res_6[0]["actions"][0]))[1]
-# '1'
-# clean_group_stats(5)

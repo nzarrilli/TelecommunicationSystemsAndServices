@@ -1,5 +1,3 @@
-__author__ = 'telcolab'
-
 import os
 import re
 
@@ -7,8 +5,8 @@ from Model.Host import Host
 from Model.Switch import Switch
 from Model.Port import Port
 from Model.Source import Source
-from Model.NetworkModel import NetworkModel
-from Network import RyuRuleCreator
+
+__author__ = 'telcolab'
 
 
 def __open_file__(filename):
@@ -20,7 +18,7 @@ def __open_file__(filename):
         # Creazione della path
         path = os.path.join(base_dir, ryu_dir, ryu_dir, app_dir, filename)
 
-        # Open file
+        # Apertura file
         in_file = open(path, "r")
 
         return in_file
@@ -31,7 +29,7 @@ def __open_file__(filename):
 
 
 def __close_file__(in_file):
-    # Close file
+    # Chiusura file
     in_file.close()
 
     return None
@@ -235,7 +233,7 @@ def __add_destination_port__(destination_port_dict, dpid_switch, port_no):
 
 def install_rules_ryu(destination_mac_address, current_switch, network_model, destination_port_dict):
     # Recupero le informazioni sullo switch al quale e' collegato l'host di destinazione
-    destination_switch = __get_switch__(network_model.network, destination_mac_address)
+    destination_switch = __get_switch__(network_model.switches, destination_mac_address)
 
     # Controlliamo che lo switch corrente non e' lo stesso di quello di destinazione
     if current_switch.dpid != destination_switch.dpid:
@@ -252,7 +250,7 @@ def install_rules_ryu(destination_mac_address, current_switch, network_model, de
         print "Switch", current_switch.dpid, "--> Port", destination_port, "--> Switch", next_switch_dpid
 
         # Richiamo il metodo passandogli lo switch successivo
-        install_rules_ryu(destination_mac_address, network[next_switch_dpid], network_model, destination_port_dict)
+        install_rules_ryu(destination_mac_address, network_model.switches[next_switch_dpid], network_model, destination_port_dict)
 
     else:  # Se siamo arrivati all'ultimo switch dobbiamo inoltrare il pacchetto sulla porta dell'host
         for key_port in destination_switch.ports:
@@ -268,93 +266,3 @@ def install_rules_ryu(destination_mac_address, current_switch, network_model, de
                 break
 
     return destination_port_dict
-
-
-if __name__ == "__main__":
-
-    # 1 Ottengo il dizionario degli switches
-    network = get_switches()
-
-    # 2 Associo gli host ai vari switches
-    network = get_hosts(network)
-
-    # 3 Aggiorno il dizionario della rete aggiornando il collegamento tra i vari switches
-    network = add_links(network)
-
-    # 4 Aggiorno il dizionario degli switches impostando per ognuno la property "primoHopDict"
-    network_model = add_paths(network)
-
-    # Stampo a video il risultato
-    for key in network:
-        print "Dpid switch:", key
-        if network[key].path is not None:
-            print "Paths:", network[key].path
-        for key_port in network[key].ports:
-            print ""
-            print "Key port:", key_port
-            print "Port number:", network[key].ports[key_port].port_no
-            print "Status:", network[key].ports[key_port].status
-            if network[key].ports[key_port].host is not None:
-                print "MAC address host:", network[key].ports[key_port].host.mac_address
-            if network[key].ports[key_port].switch is not None:
-                print "Dpid destination switch:", network[key].ports[key_port].switch.dpid
-
-        print "----------------------------------------------------------------------"
-
-    # 5 Ottengo il dizionario dei sorgenti
-    sources = get_sources()
-
-    for key in sources:
-        print "Source:", sources[key].mac_address
-        print "Multicast id:", sources[key].multicast_id
-        print "Destination list:", sources[key].mac_destination_list
-        print "----------------------------------------------------------------------"
-
-    # 6 Creo il nuovo modello della rete
-    network_model = NetworkModel(network, sources)
-
-    # 7 Clean switch rules
-    # for key_dpid_switch in network_model.network:
-    #     # importante: CANCELLARE SEMPRE PRIMA I GROUP CHE I FLOWS
-    #     RyuRuleCreator.clean_group_stats(key_dpid_switch)
-    #     RyuRuleCreator.clean_flow_stats(key_dpid_switch)
-
-    # 8 Algoritmo installazione regole ryu
-
-    # Lista degli switch nei percorsi
-    path_switch_list = []
-
-    for source in network_model.sources:
-        switch = __get_switch__(network_model.network, source)
-        print "#######################################################"
-        print "MAC address della sorgente:", source
-        print "La sorgente e' collegata alla switch:", switch.dpid
-        print "#######################################################"
-
-        # Creo il dizionario che contiene come chiave il DPID dello switch e come valore la lista di porte di
-        # destinazione
-        destination_port_dict = {}
-
-        # Controllo tutte le possibili destinazioni della sorgente
-        for destination_mac_address in network_model.sources[source].mac_destination_list:
-            # Stampo la lista dei MAC address delle destinazioni della sorgente
-            print "MAC address di destinazione:", destination_mac_address
-
-            # Richiamo la funzione che si occupa di verificare quali sono gli switch o gli host collegati per arrivare
-            # alla destinazione
-            destination_port_dict = install_rules_ryu(destination_mac_address, switch, network_model, destination_port_dict)
-
-            print ""
-
-        for destination_key in destination_port_dict:
-            print "DPID:", destination_key
-            print "Lista di porte da configurare:", destination_port_dict[destination_key]
-            RyuRuleCreator.install_rule(destination_key, source, network_model.sources[source].multicast_id,
-                                        destination_port_dict[destination_key])
-            if not path_switch_list.__contains__(destination_key):
-                path_switch_list.append(destination_key)
-
-    for switch in network_model.network:
-        if not path_switch_list.__contains__(switch):
-            RyuRuleCreator.clean_group_stats(switch)
-            RyuRuleCreator.clean_flow_stats(switch)
