@@ -25,36 +25,34 @@ def clean_flow_stats(dpid_switch):
 
     url = base_url + url_clean_switch
 
-    json_root = {"dpid": dpid_switch}
+    json_root = {"dpid": int(dpid_switch)}
     json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
 
-    return urllib2.urlopen(url=url, data=json_data).read()
+    urllib2.urlopen(url=url, data=json_data).read()
 
 
 def clean_group_stats(dpid_switch):
-
     url_clean_switch = "/stats/groupentry/delete"
 
     url = base_url + url_clean_switch
 
-    json_root = {"dpid": dpid_switch}
-    json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
+    group_stats = json.loads(get_group_stats(dpid_switch))
 
-    return urllib2.urlopen(url=url, data=json_data).read()
+    for rule in group_stats[dpid_switch]:
+        json_root = {"dpid": int(dpid_switch), "group_id": rule["group_id"]}
+        json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
 
-
+        urllib2.urlopen(url=url, data=json_data).read()
 
 
 def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
 
-
     # Creazione e invio via POST della group entry
-    url_add_entry = "/stats/groupentry/modify"
+    url_add_entry = "/stats/groupentry/add"
     url = base_url + url_add_entry
 
     json_root = {"dpid": int(dpid), "type": "ALL", "group_id": int(multicast_id)}
     buckets = []
-
 
     for port in list_output_ports:
         buckets_dict = {}
@@ -63,7 +61,6 @@ def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
         actions_list.append(actions_dict)
         buckets_dict["actions"] = actions_list
         buckets.append(buckets_dict)
-
 
     json_root["buckets"] = buckets
     json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
@@ -88,8 +85,8 @@ def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
     urllib2.urlopen(url=url, data=json_data).read()
 
 # TESTS
-#print "Esecuzione di install_rule(1, '20:40:8f:boh:prova:LOL', 2, [3,4])"
-#install_rule(1, "20:40:8f:boh:prova:LOL", 2, [3, 4, 5, 6, 7])
+# print "Esecuzione di install_rule(1, '20:40:8f:boh:prova:LOL', 2, [3,4])"
+# install_rule(1, "20:40:8f:boh:prova:LOL", 2, [3, 4, 5, 6, 7])
 
 # json_response = get_flow_stats(1)
 # print json.dumps(json.loads(json_response), sort_keys=False, indent=4, separators=(",", ": "))
@@ -141,3 +138,4 @@ def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
 # >>> import re
 # >>> re.split("[:]+", str(obj_res_6[0]["actions"][0]))[1]
 # '1'
+# clean_group_stats(5)
