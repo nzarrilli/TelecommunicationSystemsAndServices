@@ -69,7 +69,7 @@ def __group_entry_api_call(api, dpid, multicast_id, list_output_ports):
     json_root["buckets"] = buckets
     json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
 
-    if api == "add":
+    if (api == "add"):
         print "GROUP ENTRY CREATA: \n" + json_data
     else:
         print "GROUP ENTRY MODIFICATA: \n" + json_data
@@ -106,14 +106,31 @@ def add_flow_entry(dpid, source_mac_address, multicast_id):
 
 def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
     group_stats = get_group_stats(dpid)
+    print group_stats
 
+    print "Switch", dpid,"GROUP PRIMA:\n", json.dumps(group_stats, sort_keys=False, indent=4, separators=(",", ": "))
     # Se e' la prima configurazione dello switch, aggiungi, altrimenti modifica la regola gia' presente
-    if not group_stats[dpid]:  # Questa istruzione se la lista e' vuota
+    if not group_stats[dpid]: # Questa istruzione se la lista e' vuota
         # Inserimento group entry
         add_group_entry(dpid, multicast_id, list_output_ports)
     else:
-        # Modifica group entry (l'inserimento non avrebbe sovrascritto corretamente)
-        modify_group_entry(dpid, multicast_id, list_output_ports)
+        print "a"
+        print group_stats[str(dpid)]
+        groups_in_switch = []
+        for group_stat in group_stats[str(dpid)]:
+            print "b", group_stat["group_id"]
+            groups_in_switch.append(group_stat["group_id"])
+        if not groups_in_switch.__contains__(int(multicast_id)):
+            print "c"
+            # Inserimento group entry
+            add_group_entry(dpid, multicast_id, list_output_ports)
+        else:
+            print "d"
+            # Modifica group entry (l'inserimento non avrebbe sovrascritto corretamente)
+            modify_group_entry(dpid, multicast_id, list_output_ports)
 
     # Inserimento flow entry
     add_flow_entry(dpid, source_mac_address, multicast_id)
+
+    group_stats = get_group_stats(dpid)
+    print "Switch", dpid,"GROUP DOPO:\n", json.dumps(group_stats, sort_keys=False, indent=4, separators=(",", ": "))
