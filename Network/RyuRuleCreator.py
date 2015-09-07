@@ -69,7 +69,7 @@ def __group_entry_api_call(api, dpid, multicast_id, list_output_ports):
     json_root["buckets"] = buckets
     json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
 
-    if (api == "add"):
+    if api == "add":
         print "GROUP ENTRY CREATA: \n" + json_data
     else:
         print "GROUP ENTRY MODIFICATA: \n" + json_data
@@ -101,7 +101,7 @@ def add_flow_entry(dpid, source_mac_address, multicast_id):
     json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
     print "FLOW ENTRY: \n" + json_data
     # Invio via POST della flow entry
-    urllib2.urlopen(url=url, data=json_*data).read()
+    urllib2.urlopen(url=url, data=json_data).read()
 
 
 def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
