@@ -226,9 +226,10 @@ def __get_switch__(network, mac_address_source):
 def __add_destination_port__(destination_port_dict, dpid_switch, port_no):
     if not destination_port_dict.keys().__contains__(dpid_switch):
         destination_port_dict[dpid_switch] = []
+
+    if not destination_port_dict[dpid_switch].__contains__(port_no):
         destination_port_dict[dpid_switch].append(port_no)
-    else:
-        destination_port_dict[dpid_switch].append(port_no)
+
 
     return destination_port_dict
 

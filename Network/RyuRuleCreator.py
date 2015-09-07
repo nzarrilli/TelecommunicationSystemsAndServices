@@ -44,6 +44,7 @@ def clean_group_stats(dpid_switch):
 
 def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
 
+
     # Creazione e invio via POST della group entry
     url_add_entry = "/stats/groupentry/add"
     url = base_url + url_add_entry
