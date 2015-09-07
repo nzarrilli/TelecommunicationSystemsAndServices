@@ -209,7 +209,7 @@ def get_sources():
 
 
 # Restituisce lo switch
-def __get_switch__(network, mac_address_source):
+def get_switch(network, mac_address_source):
     global first_switch
 
     for key in network:
@@ -233,7 +233,7 @@ def __add_destination_port__(destination_port_dict, dpid_switch, port_no):
 
 def install_rules_ryu(destination_mac_address, current_switch, network_model, destination_port_dict):
     # Recupero le informazioni sullo switch al quale e' collegato l'host di destinazione
-    destination_switch = __get_switch__(network_model.switches, destination_mac_address)
+    destination_switch = get_switch(network_model.switches, destination_mac_address)
 
     # Controlliamo che lo switch corrente non e' lo stesso di quello di destinazione
     if current_switch.dpid != destination_switch.dpid:

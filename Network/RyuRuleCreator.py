@@ -108,7 +108,7 @@ def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
     group_stats = get_group_stats(dpid)
 
     # Se e' la prima configurazione dello switch, aggiungi, altrimenti modifica la regola gia' presente
-    if not group_stats[dpid]: # Questa istruzione se la lista e' vuota
+    if not group_stats[dpid]:  # Questa istruzione se la lista e' vuota
         # Inserimento group entry
         add_group_entry(dpid, multicast_id, list_output_ports)
     else:
