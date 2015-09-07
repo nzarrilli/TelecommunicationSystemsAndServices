@@ -1,7 +1,8 @@
-__author__ = "telcolab"
-
 import urllib2
 import json
+
+__author__ = "telcolab"
+
 
 base_url = "http://localhost:8080"
 
@@ -10,14 +11,14 @@ def get_flow_stats(dpid_switch):
     url_get_flow_stats = "/stats/flow/"
     url = base_url + url_get_flow_stats + str(dpid_switch)
 
-    return urllib2.urlopen(url=url).read()
+    return json.loads(urllib2.urlopen(url=url).read())
 
 
 def get_group_stats(dpid_switch):
     url_get_group_stats = "/stats/groupdesc/"
     url = base_url + url_get_group_stats + str(dpid_switch)
 
-    return urllib2.urlopen(url=url).read()
+    return json.loads(urllib2.urlopen(url=url).read())
 
 
 def clean_flow_stats(dpid_switch):
@@ -25,10 +26,12 @@ def clean_flow_stats(dpid_switch):
 
     url = base_url + url_clean_switch
 
-    json_root = {"dpid": dpid_switch}
+    json_root = {"dpid": int(dpid_switch)}
     json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
 
-    return urllib2.urlopen(url=url, data=json_data).read()
+    urllib2.urlopen(url=url, data=json_data).read()
+
+    print "Cancellate tutte flow entries dello switch:", dpid_switch
 
 
 def clean_group_stats(dpid_switch):
@@ -36,22 +39,24 @@ def clean_group_stats(dpid_switch):
 
     url = base_url + url_clean_switch
 
-    json_root = {"dpid": dpid_switch}
-    json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
+    group_stats = get_group_stats(dpid_switch)
 
-    return urllib2.urlopen(url=url, data=json_data).read()
+    for rule in group_stats[dpid_switch]:
+        json_root = {"dpid": int(dpid_switch), "group_id": rule["group_id"]}
+        json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
+
+        urllib2.urlopen(url=url, data=json_data).read()
+
+        print "Cancellata group entry con id", rule["group_id"], "dallo switch", dpid_switch
 
 
-def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
-
-
+def __group_entry_api_call(api, dpid, multicast_id, list_output_ports):
     # Creazione e invio via POST della group entry
-    url_add_entry = "/stats/groupentry/add"
+    url_add_entry = "/stats/groupentry/" + api
     url = base_url + url_add_entry
 
     json_root = {"dpid": int(dpid), "type": "ALL", "group_id": int(multicast_id)}
     buckets = []
-
 
     for port in list_output_ports:
         buckets_dict = {}
@@ -61,14 +66,28 @@ def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
         buckets_dict["actions"] = actions_list
         buckets.append(buckets_dict)
 
-
     json_root["buckets"] = buckets
     json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
-    print "GROUP ENTRY CREATA: \n" + json_data
+
+    if (api == "add"):
+        print "GROUP ENTRY CREATA: \n" + json_data
+    else:
+        print "GROUP ENTRY MODIFICATA: \n" + json_data
+
     # Invio via post della group entry
     urllib2.urlopen(url=url, data=json_data).read()
 
-    # Creazione e invio via POST della flow entry
+
+def add_group_entry(dpid, multicast_id, list_output_ports):
+    __group_entry_api_call("add", dpid, multicast_id, list_output_ports)
+
+
+def modify_group_entry(dpid, multicast_id, list_output_ports):
+    __group_entry_api_call("modify", dpid, multicast_id, list_output_ports)
+
+
+def add_flow_entry(dpid, source_mac_address, multicast_id):
+    # Creazione e invio via POST della flow entry (in caso gia' presente la sovrascrive)
     url_add_entry = "/stats/flowentry/add"
     url = base_url + url_add_entry
     json_root = {"dpid": int(dpid)}
@@ -80,16 +99,38 @@ def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
 
     json_root["actions"] = actions
     json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
-    print "FLOW ENTRY CREATA: \n" + json_data
+    print "FLOW ENTRY: \n" + json_data
     # Invio via POST della flow entry
     urllib2.urlopen(url=url, data=json_data).read()
 
-# TESTS
-#print "Esecuzione di install_rule(1, '20:40:8f:boh:prova:LOL', 2, [3,4])"
-#install_rule(1, "20:40:8f:boh:prova:LOL", 2, [3, 4, 5, 6, 7])
 
-# json_response = get_flow_stats(1)
-# print json.dumps(json.loads(json_response), sort_keys=False, indent=4, separators=(",", ": "))
+def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
+    group_stats = get_group_stats(dpid)
+    print group_stats
 
-# json_response = get_group_stats(1)
-# print json.dumps(json.loads(json_response), sort_keys=False, indent=4, separators=(",", ": "))
+    print "Switch", dpid,"GROUP PRIMA:\n", json.dumps(group_stats, sort_keys=False, indent=4, separators=(",", ": "))
+    # Se e' la prima configurazione dello switch, aggiungi, altrimenti modifica la regola gia' presente
+    if not group_stats[dpid]: # Questa istruzione se la lista e' vuota
+        # Inserimento group entry
+        add_group_entry(dpid, multicast_id, list_output_ports)
+    else:
+        print "a"
+        print group_stats[str(dpid)]
+        groups_in_switch = []
+        for group_stat in group_stats[str(dpid)]:
+            print "b", group_stat["group_id"]
+            groups_in_switch.append(group_stat["group_id"])
+        if not groups_in_switch.__contains__(int(multicast_id)):
+            print "c"
+            # Inserimento group entry
+            add_group_entry(dpid, multicast_id, list_output_ports)
+        else:
+            print "d"
+            # Modifica group entry (l'inserimento non avrebbe sovrascritto corretamente)
+            modify_group_entry(dpid, multicast_id, list_output_ports)
+
+    # Inserimento flow entry
+    add_flow_entry(dpid, source_mac_address, multicast_id)
+
+    group_stats = get_group_stats(dpid)
+    print "Switch", dpid,"GROUP DOPO:\n", json.dumps(group_stats, sort_keys=False, indent=4, separators=(",", ": "))

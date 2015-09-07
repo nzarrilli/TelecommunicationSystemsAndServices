@@ -314,12 +314,15 @@ if __name__ == "__main__":
     # 6 Creo il nuovo modello della rete
     network_model = NetworkModel(network, sources)
 
-    # 7 Clean switch rules
-    for key_dpid_switch in network_model.network:
-        RyuRuleCreator.clean_flow_stats(key_dpid_switch)
-        RyuRuleCreator.clean_group_stats(key_dpid_switch)
+    # # 7 Clean switch rules
+    # for key_dpid_switch in network_model.network:
+    #     RyuRuleCreator.clean_flow_stats(key_dpid_switch)
+    #     RyuRuleCreator.clean_group_stats(key_dpid_switch)
 
     # 8 Algoritmo installazione regole ryu
+
+    path_switch_list = []
+
     for source in network_model.sources:
         switch = __get_switch__(network_model.network, source)
         print "#######################################################"
@@ -347,3 +350,10 @@ if __name__ == "__main__":
             print "Lista di porte da configurare:", destination_port_dict[destination_key]
             RyuRuleCreator.install_rule(destination_key, source, network_model.sources[source].multicast_id,
                                         destination_port_dict[destination_key])
+            if not path_switch_list.__contains__(destination_key):
+                path_switch_list.append(destination_key)
+
+        for switch in network_model.network:
+            if not path_switch_list.__contains__(switch):
+                RyuRuleCreator.clean_group_stats(switch)
+                RyuRuleCreator.clean_flow_stats(switch)
