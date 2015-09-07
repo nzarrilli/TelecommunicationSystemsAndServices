@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
             # Richiamo la funzione che si occupa di verificare quali sono gli switch o gli host collegati per arrivare
             # alla destinazione
-            destination_port_dict = RyuRuleCreator.install_rules_ryu(destination_mac_address, switch, network_model,
+            destination_port_dict = ReadFile.install_rules_ryu(destination_mac_address, switch, network_model,
                                                                      destination_port_dict)
 
             print ""
