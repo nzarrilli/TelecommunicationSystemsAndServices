@@ -54,7 +54,9 @@ if __name__ == "__main__":
 
     # 8 Algoritmo installazione regole ryu
 
-    path_switch_list = []
+
+    path_switch_list = [] # Lista switch coinvolti in qualche percorso
+    switch_multicast_ids_dict = {} # chiave: dpid, valore:lista multicast_id installati dall'algoritmo sullo switch
 
     for source in network_model.sources:
         switch = ReadFile.__get_switch__(network_model.switches, source)
@@ -84,10 +86,29 @@ if __name__ == "__main__":
             print "Lista di porte da configurare:", destination_port_dict[destination_key]
             RyuRuleCreator.install_rule(destination_key, source, network_model.sources[source].multicast_id,
                                         destination_port_dict[destination_key])
+            # Aggiunta dello switch alla lista di switch sul quale il nostro algoritmo ha installato regole
             if not path_switch_list.__contains__(destination_key):
                 path_switch_list.append(destination_key)
 
-        for switch in network_model.switches:
-            if not path_switch_list.__contains__(switch):
-                RyuRuleCreator.clean_group_stats(switch)
-                RyuRuleCreator.clean_flow_stats(switch)
+            # Aggiunta del multicast_id alla lista di quelli presenti sullo switch.
+            if not switch_multicast_ids_dict.keys().__contains__(destination_key):
+                switch_multicast_ids_dict[destination_key] = []
+            switch_multicast_ids_dict[destination_key].append(network_model.sources[source].multicast_id)
+
+
+
+
+    # Rimozione di tutte le regole precedentemente installate ed ora inutilizzate
+    for switch in network_model.switches:
+        if not path_switch_list.__contains__(switch):
+            # Cancellazione di tutte le regole appartenenti a switch che non sono piu' sul percorso
+            RyuRuleCreator.clean_group_stats(switch)
+            RyuRuleCreator.clean_flow_stats(switch)
+        else:
+            multicast_ids = RyuRuleCreator.get_multicast_ids(switch)
+            print "Switch", switch, "multicast_ids_API:", multicast_ids
+            print "Switch", switch, "multicast_ids_installed:", switch_multicast_ids_dict[switch]
+            for m_id in multicast_ids:
+                # Se m_id non e' presente nella lista di m_ids impostati dall'algoritmo cancello le entries ormai obsolete
+                if not switch_multicast_ids_dict[switch].__contains__(m_id):
+                    RyuRuleCreator.remove_unused_multicast_id_stats(switch, m_id)

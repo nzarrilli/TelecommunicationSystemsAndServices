@@ -20,6 +20,17 @@ def get_group_stats(dpid_switch):
     return json.loads(urllib2.urlopen(url=url).read())
 
 
+def get_multicast_ids(dpid_switch):
+    group_stats = get_group_stats(dpid_switch)
+
+    multicast_ids_list = []
+    if group_stats[dpid_switch]: # Questa istruzione verifica se la lista NON e' vuota
+        for group_entry in group_stats[dpid_switch]:
+            multicast_ids_list.append(str(group_entry["group_id"]))
+
+    return multicast_ids_list
+
+
 def clean_flow_stats(dpid_switch):
     url_clean_switch = "/stats/flowentry/delete"
 
@@ -47,6 +58,35 @@ def clean_group_stats(dpid_switch):
         urllib2.urlopen(url=url, data=json_data).read()
 
         print "Cancellata group entry con id", rule["group_id"], "dallo switch", dpid_switch
+
+
+def remove_unused_multicast_id_stats(dpid_switch, multicast_id):
+    url_clean_switch = "/stats/groupentry/delete"
+
+    url = base_url + url_clean_switch
+
+    json_root = {"dpid": int(dpid_switch), "group_id": multicast_id}
+    json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
+
+    urllib2.urlopen(url=url, data=json_data).read()
+
+    print "Cancellata group entry inutilizzata con id", multicast_id, "dallo switch", dpid_switch
+
+
+    url_clean_switch = "/stats/flowentry/delete"
+
+    url = base_url + url_clean_switch
+
+    json_root = {"dpid": int(dpid_switch)}
+    actions = []
+    action_dictionary = {"type": "GROUP", "group_id": int(multicast_id)}
+    actions.append(action_dictionary)
+    json_root["actions"] = actions
+    json_data = json.dumps(json_root, sort_keys=False, indent=4, separators=(",", ": "))
+
+    urllib2.urlopen(url=url, data=json_data).read()
+
+    print "Cancellata flow entry inutilizzata con id", multicast_id, "dallo switch", dpid_switch
 
 
 def __group_entry_api_call(api, dpid, multicast_id, list_output_ports):
@@ -102,14 +142,14 @@ def add_flow_entry(dpid, source_mac_address, multicast_id):
     # Invio via POST della flow entry
     urllib2.urlopen(url=url, data=json_data).read()
 
-
+#TODO Implementare rimozione group id non piu' usati
 def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
     group_stats = get_group_stats(dpid)
     print group_stats
 
     print "Switch", dpid, "GROUP PRIMA:\n", json.dumps(group_stats, sort_keys=False, indent=4, separators=(",", ": "))
     # Se e' la prima configurazione dello switch, aggiungi, altrimenti modifica la regola gia' presente
-    if not group_stats[dpid]:  # Questa istruzione se la lista e' vuota
+    if not group_stats[dpid]:  # Questa istruzione verifica se la lista e' vuota
         # Inserimento group entry
         add_group_entry(dpid, multicast_id, list_output_ports)
     else:
