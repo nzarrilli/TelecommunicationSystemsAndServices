@@ -39,19 +39,18 @@ def install_rules_ryu(dest_mac_address, current_switch, network_mod, dest_port_d
                           dest_port_dict)
 
     else:  # Se siamo arrivati all'ultimo switch dobbiamo inoltrare il pacchetto sulla porta dell'host
-        for key_port in destination_switch.ports:
-            if destination_switch.ports[key_port].host is not None \
-                    and destination_switch.ports[key_port].host.mac_address == dest_mac_address:
-                # Recupero la porta di collegamento tra l'host e lo switch
-                destination_port = destination_switch.ports[key_port].port_no
-                # Aggiungo al dizionario la porta di collegamento tra lo switch corrente e lo switch successivo
-                dest_port_dict = __add_destination_port__(dest_port_dict, current_switch.dpid,
-                                                                 destination_port)
+        if destination_switch.ports[dest_mac_address].host is not None \
+                and destination_switch.ports[dest_mac_address].host.mac_address == dest_mac_address:
+            # Recupero la porta di collegamento tra l'host e lo switch
+            destination_port = destination_switch.ports[dest_mac_address].port_no
+            # Aggiungo al dizionario la porta di collegamento tra lo switch corrente e lo switch successivo
+            dest_port_dict = __add_destination_port__(dest_port_dict, current_switch.dpid,
+                                                      destination_port)
 
-                print "Switch", current_switch.dpid, "--> Port", destination_port, "--> Host", dest_mac_address
-                break
+            print "Switch", current_switch.dpid, "--> Port", destination_port, "--> Host", dest_mac_address
 
     return dest_port_dict
+
 
 if __name__ == "__main__":
 
@@ -120,7 +119,8 @@ if __name__ == "__main__":
 
             # Richiamo la funzione che si occupa di verificare quali sono gli switch o gli host collegati per arrivare
             # alla destinazione
-            destination_port_dict = install_rules_ryu(destination_mac_address, switch, network_model, destination_port_dict)
+            destination_port_dict = install_rules_ryu(destination_mac_address, switch, network_model,
+                                                      destination_port_dict)
 
             print ""
 
