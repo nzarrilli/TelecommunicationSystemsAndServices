@@ -1,5 +1,3 @@
-__author__ = 'telcolab'
-
 import os
 import re
 
@@ -7,10 +5,11 @@ from Model.Host import Host
 from Model.Switch import Switch
 from Model.Port import Port
 from Model.Source import Source
-from Model.NetworkModel import NetworkModel
-from Network import RyuRuleCreator
+
+__author__ = 'telcolab'
 
 
+# Funzione che si occupa della apertura del file
 def __open_file__(filename):
     try:
         base_dir = os.getenv("HOME")
@@ -20,7 +19,7 @@ def __open_file__(filename):
         # Creazione della path
         path = os.path.join(base_dir, ryu_dir, ryu_dir, app_dir, filename)
 
-        # Open file
+        # Apertura file
         in_file = open(path, "r")
 
         return in_file
@@ -30,6 +29,7 @@ def __open_file__(filename):
     return None
 
 
+# Funzione che si occupa di chiudere il file precedentemente aperto
 def __close_file__(in_file):
     # Close file
     in_file.close()
@@ -37,16 +37,16 @@ def __close_file__(in_file):
     return None
 
 
-# Return the dictionary of switches
+# Funzione che legge tutti gli switches contenuti nel file "Switches.txt"
 def get_switches():
     filename = "Switch.txt"
 
-    # Open file
+    # Apertura file
     in_file = __open_file__(filename)
 
     switches_dict = {}
 
-    # Read all lines
+    # Lettura di tutte le linee del file
     for line in in_file:
         content = re.split("[<> ,]+", line)
 
@@ -56,13 +56,13 @@ def get_switches():
 
         switches_dict[dpid_switch] = Switch(dpid_switch, ports)
 
-    # Close file
+    # Chiusura file
     __close_file__(in_file)
 
     return switches_dict
 
 
-# Retrieving information about the switch ports
+# Funzione che si occupa di inizializzare le porte degli switches
 def __set_ports__(ports_dict, line):
     if "Port" in line[0]:
 
@@ -81,14 +81,14 @@ def __set_ports__(ports_dict, line):
     return ports_dict
 
 
-# Return the list of hosts
+# Funzione che legge tutti gli hosts contenuti nel file "Host.txt"
 def get_hosts(network):
     filename = "Host.txt"
 
-    # Open file
+    # Apertura file
     in_file = __open_file__(filename)
 
-    # Read all lines
+    # Lettura di tutte le linee del file
     for line in in_file:
         mac_address = re.split("[= ]+", line)[2]
         port = re.split("[= ]+", line)[4]
@@ -99,7 +99,7 @@ def get_hosts(network):
         # Aggiungo l'host alla lista delle porte
         network[dpid].ports[mac_address].set_host(Host(mac_address))
 
-    # Close file
+    # Chiusura file
     __close_file__(in_file)
 
     return network
@@ -109,12 +109,12 @@ def get_hosts(network):
 def add_links(network):
     filename = "Link.txt"
 
-    # Open file
+    # Apertura file
     in_file = __open_file__(filename)
 
     suffix_dpid = "dpid="
 
-    # Read all lines
+    # Lettura di tutte le linee del file
     for line in in_file:
         dpid_source = re.split("[<>,= ]+", line)[2]
         port_source = re.split("[<>,= ]+", line)[4]
@@ -130,7 +130,7 @@ def add_links(network):
         # Aggiungo lo switch di destinazione
         network[dpid_source].ports[suffix_dpid + dpid_destination].set_switch(network[dpid_destination])
 
-    # Close file
+    # Chiusura file
     __close_file__(in_file)
 
     return network
@@ -140,10 +140,10 @@ def add_links(network):
 def add_paths(network):
     filename = "Path.txt"
 
-    # Open file
+    # Apertura file
     in_file = __open_file__(filename)
 
-    # Read all lines
+    # Lettura di tutte le linee del file
     for line in in_file:
         new_line = re.split("[\{\}]+", line)
         source = new_line[1].replace(": ", "")
@@ -154,7 +154,7 @@ def add_paths(network):
 
         network[source].set_paths(destination_dict)
 
-    # Close file
+    # Chiusura file
     __close_file__(in_file)
 
     return network
@@ -183,12 +183,12 @@ def __get_destination__(destination_dict, line):
 def get_sources():
     filename = "Sorgenti.txt"
 
-    # Open file
+    # Apertura file
     in_file = __open_file__(filename)
 
     sources_dict = {}
 
-    # Read all lines
+    # Lettura di tutte le linee del file
     for line in in_file:
         new_line = re.split("[\n:]+", line)
 
@@ -204,68 +204,7 @@ def get_sources():
             temp_source.add_application_client(mac_address_dest)
             sources_dict[mac_address_sorg] = temp_source
 
-    # Close file
+    # Chiusura file
     __close_file__(in_file)
 
     return sources_dict
-
-
-# Restituisce lo switch
-def __get_switch__(network, mac_address_source):
-    global first_switch
-
-    for key in network:
-        if network[key].ports.keys().__contains__(mac_address_source):
-            first_switch = network[key]
-            break
-
-    return first_switch
-
-
-# Funzione che aggiunge al dizionario la porta di collegamento tra lo switch sorgente e quello di destinazione
-def __add_destination_port__(destination_port_dict, dpid_switch, port_no):
-    if not destination_port_dict.keys().__contains__(dpid_switch):
-        destination_port_dict[dpid_switch] = []
-
-    if not destination_port_dict[dpid_switch].__contains__(port_no):
-        destination_port_dict[dpid_switch].append(port_no)
-
-    return destination_port_dict
-
-
-def install_rules_ryu(destination_mac_address, current_switch, network_model, destination_port_dict):
-    # Recupero le informazioni sullo switch al quale e' collegato l'host di destinazione
-    destination_switch = __get_switch__(network_model.switches, destination_mac_address)
-
-    # Controlliamo che lo switch corrente non e' lo stesso di quello di destinazione
-    if current_switch.dpid != destination_switch.dpid:
-
-        # Recupero dpid dello switch successivo dalla lista dei paths
-        next_switch_dpid = current_switch.path[destination_switch.dpid][1]
-
-        # Recupero la porta di collegamento dello switch successivo
-        destination_port = current_switch.get_switch_port(next_switch_dpid)
-
-        # Aggiungo al dizionario la porta di collegamento tra lo switch corrente e lo switch successivo
-        destination_port_dict = __add_destination_port__(destination_port_dict, current_switch.dpid, destination_port)
-
-        print "Switch", current_switch.dpid, "--> Port", destination_port, "--> Switch", next_switch_dpid
-
-        # Richiamo il metodo passandogli lo switch successivo
-        install_rules_ryu(destination_mac_address, network_model.switches[next_switch_dpid], network_model,
-                          destination_port_dict)
-
-    else:  # Se siamo arrivati all'ultimo switch dobbiamo inoltrare il pacchetto sulla porta dell'host
-        for key_port in destination_switch.ports:
-            if destination_switch.ports[key_port].host is not None \
-                    and destination_switch.ports[key_port].host.mac_address == destination_mac_address:
-                # Recupero la porta di collegamento tra l'host e lo switch
-                destination_port = destination_switch.ports[key_port].port_no
-                # Aggiungo al dizionario la porta di collegamento tra lo switch corrente e lo switch successivo
-                destination_port_dict = __add_destination_port__(destination_port_dict, current_switch.dpid,
-                                                                 destination_port)
-
-                print "Switch", current_switch.dpid, "--> Port", destination_port, "--> Host", destination_mac_address
-                break
-
-    return destination_port_dict

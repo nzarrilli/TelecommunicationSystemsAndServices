@@ -24,7 +24,7 @@ def get_multicast_ids(dpid_switch):
     group_stats = get_group_stats(dpid_switch)
 
     multicast_ids_list = []
-    if group_stats[dpid_switch]: # Questa istruzione verifica se la lista NON e' vuota
+    if group_stats[dpid_switch]:  # Questa istruzione verifica se la lista NON e' vuota
         for group_entry in group_stats[dpid_switch]:
             multicast_ids_list.append(str(group_entry["group_id"]))
 
@@ -71,7 +71,6 @@ def remove_unused_multicast_id_stats(dpid_switch, multicast_id):
     urllib2.urlopen(url=url, data=json_data).read()
 
     print "Cancellata group entry inutilizzata con id", multicast_id, "dallo switch", dpid_switch
-
 
     url_clean_switch = "/stats/flowentry/delete"
 
@@ -142,34 +141,29 @@ def add_flow_entry(dpid, source_mac_address, multicast_id):
     # Invio via POST della flow entry
     urllib2.urlopen(url=url, data=json_data).read()
 
-#TODO Implementare rimozione group id non piu' usati
+
 def install_rule(dpid, source_mac_address, multicast_id, list_output_ports):
     group_stats = get_group_stats(dpid)
-    print group_stats
+    # print group_stats
+    # print "Switch", dpid, "GROUP PRIMA:\n", json.dumps(group_stats, sort_keys=False, indent=4, separators=(",", ": "))
 
-    print "Switch", dpid, "GROUP PRIMA:\n", json.dumps(group_stats, sort_keys=False, indent=4, separators=(",", ": "))
     # Se e' la prima configurazione dello switch, aggiungi, altrimenti modifica la regola gia' presente
     if not group_stats[dpid]:  # Questa istruzione verifica se la lista e' vuota
         # Inserimento group entry
         add_group_entry(dpid, multicast_id, list_output_ports)
     else:
-        print "a"
-        print group_stats[str(dpid)]
         groups_in_switch = []
         for group_stat in group_stats[str(dpid)]:
-            print "b", group_stat["group_id"]
             groups_in_switch.append(group_stat["group_id"])
         if not groups_in_switch.__contains__(int(multicast_id)):
-            print "c"
             # Inserimento group entry
             add_group_entry(dpid, multicast_id, list_output_ports)
         else:
-            print "d"
             # Modifica group entry (l'inserimento non avrebbe sovrascritto corretamente)
             modify_group_entry(dpid, multicast_id, list_output_ports)
 
     # Inserimento flow entry
     add_flow_entry(dpid, source_mac_address, multicast_id)
 
-    group_stats = get_group_stats(dpid)
-    print "Switch", dpid, "GROUP DOPO:\n", json.dumps(group_stats, sort_keys=False, indent=4, separators=(",", ": "))
+    # group_stats = get_group_stats(dpid)
+    # print "Switch", dpid, "GROUP DOPO:\n", json.dumps(group_stats, sort_keys=False, indent=4, separators=(",", ": "))
