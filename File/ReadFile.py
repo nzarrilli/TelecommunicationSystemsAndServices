@@ -124,9 +124,9 @@ def add_links(network):
         # Aggiungo il dpid dello switch di destinazione
         network[dpid_source].ports[suffix_dpid + dpid_destination] = network[dpid_source].ports.pop(port_source)
         # Aggiorno la porta
-        network[dpid_source].ports[suffix_dpid + dpid_destination].set_port = port_source
+        network[dpid_source].ports[suffix_dpid + dpid_destination].set_porgit(port_source)
         # Aggiorno lo stato della porta
-        network[dpid_source].ports[suffix_dpid + dpid_destination].set_status = status_source
+        network[dpid_source].ports[suffix_dpid + dpid_destination].set_status(status_source)
         # Aggiungo lo switch di destinazione
         network[dpid_source].ports[suffix_dpid + dpid_destination].set_switch(network[dpid_destination])
 
