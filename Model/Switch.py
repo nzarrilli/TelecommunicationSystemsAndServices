@@ -2,7 +2,6 @@ __author__ = 'telcolab'
 
 
 class Switch(object):
-
     # The class "constructor" - It's actually an initializer
     def __init__(self, dpid, ports, path=None):
         self.dpid = dpid

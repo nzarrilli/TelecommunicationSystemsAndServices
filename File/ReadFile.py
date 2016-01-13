@@ -2,9 +2,9 @@ import os
 import re
 
 from Model.Host import Host
-from Model.Switch import Switch
 from Model.Port import Port
 from Model.Source import Source
+from Model.Switch import Switch
 
 __author__ = 'telcolab'
 
@@ -150,7 +150,7 @@ def add_paths(network):
 
         destination_dict = __get_destination__({}, new_line[2].replace("],", "]").replace(", ", ",").replace(": ",
                                                                                                              " ").split(
-            " "))
+                " "))
 
         network[source].set_paths(destination_dict)
 

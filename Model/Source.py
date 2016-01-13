@@ -2,7 +2,6 @@ __author__ = 'telcolab'
 
 
 class Source(object):
-
     # The class "constructor" - It's actually an initializer
     def __init__(self, mac_address, multicast_id):
         self.mac_address = mac_address

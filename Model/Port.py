@@ -2,7 +2,6 @@ __author__ = 'telcolab'
 
 
 class Port(object):
-
     # The class "constructor" - It's actually an initializer
     def __init__(self, port_no, status, host=None, switch=None):
         self.port_no = port_no
